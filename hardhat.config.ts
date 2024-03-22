@@ -46,6 +46,11 @@ const config: HardhatUserConfig = {
       accounts: accounts("mainnet"),
       tags: ["prod", "live"],
     },
+    sepolia: {
+      url: node_url("sepolia"),
+      accounts: accounts("sepolia"),
+      tags: ["test", "live"],
+    },
     polygon: {
       url: node_url("polygon"),
       accounts: accounts("polygon"),
@@ -60,6 +65,7 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: {
       mainnet: verifyKey("etherscan"),
+      sepolia: verifyKey("etherscan"),
       polygon: verifyKey("polygonscan"),
       polygonMumbai: verifyKey("polygonscan"),
     },
