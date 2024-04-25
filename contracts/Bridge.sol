@@ -4,30 +4,34 @@ pragma solidity ^0.8.20;
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IBTCBridge} from "./interfaces/IBTCBridge.sol";
-import {IWBTC} from "./interfaces/IWBTC.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {Sig} from "./libraries/Structs.sol";
 
 /**
- * @title BTC Bridge contract
- *        bridges wbtc to another networks
+ * @title Bridge contract
+ *        bridges to another networks
  */
-contract BTCBridge is IBTCBridge, AccessControl, ReentrancyGuard {
+contract Bridge is AccessControl, ReentrancyGuard {
+  using SafeERC20 for IERC20;
+  using Address for address payable;
+
   uint256 public chainId;
-  IWBTC public token;
 
   /// @dev roles
   bytes32 public constant ADMIN_ROLE = keccak256("Admin");
   bytes32 public constant KEEPER_ROLE = keccak256("Keeper");
 
+  event Deposit(bytes32 indexed key, address from);
+  event Withdraw(bytes32 indexed key, address to);
+
+  error InvalidParams();
+  error InvalidAmount();
+
   /**
    * @dev initialize bridge
-   * @param _token wbtc address on chain
    * @param _admin admin address of bridge
    */
-  constructor(address _token, address _admin) {
-    token = IWBTC(_token);
-
+  constructor(address _admin) {
     uint _chainId;
     assembly {
       _chainId := chainid()
@@ -41,13 +45,27 @@ contract BTCBridge is IBTCBridge, AccessControl, ReentrancyGuard {
   /**
    * @dev deposit wbtc to bridge. Users call this function
    * @param _key transaction key
+   * @param _token deposit token
    * @param _amount wbtc amount to bridge
    * @param _sig signature of keeper
    */
-  function deposit(bytes32 _key, uint256 _amount, Sig calldata _sig) external {
-    require(_checkDeposit(msg.sender, _key, _amount, _sig), "BTCBridge: invalid parameters");
+  function deposit(
+    bytes32 _key,
+    address _token,
+    uint256 _amount,
+    Sig calldata _sig
+  ) external payable {
+    if (!_checkDeposit(msg.sender, _key, _token, _amount, _sig)) {
+      revert InvalidParams();
+    }
 
-    token.transferFrom(_msgSender(), address(this), _amount);
+    if (_token == address(0)) {
+      if (msg.value != _amount) {
+        revert InvalidAmount();
+      }
+    } else {
+      IERC20(_token).safeTransferFrom(_msgSender(), address(this), _amount);
+    }
 
     emit Deposit(_key, _msgSender());
   }
@@ -56,14 +74,20 @@ contract BTCBridge is IBTCBridge, AccessControl, ReentrancyGuard {
    * @dev send wbtc to user. Keepers call this function to send btc to users
    * @param _key transaction key
    * @param _to address of user
+   * @param _token token to withdraw
    * @param _amount wbtc amount to send
    */
   function withdraw(
     bytes32 _key,
     address _to,
+    address _token,
     uint256 _amount
   ) external nonReentrant onlyRole(KEEPER_ROLE) {
-    token.transfer(_to, _amount);
+    if (_token == address(0)) {
+      payable(_to).sendValue(_amount);
+    } else {
+      IERC20(_token).safeTransfer(_to, _amount);
+    }
 
     emit Withdraw(_key, _to);
   }
@@ -72,10 +96,11 @@ contract BTCBridge is IBTCBridge, AccessControl, ReentrancyGuard {
   function _checkDeposit(
     address _sender,
     bytes32 _key,
+    address _token,
     uint256 _amount,
     Sig calldata _sig
   ) private view returns (bool) {
-    bytes32 messageHash = keccak256(abi.encodePacked(_sender, _key, _amount, chainId));
+    bytes32 messageHash = keccak256(abi.encodePacked(_sender, _key, _token, _amount, chainId));
 
     bytes32 ethSignedMessageHash = keccak256(
       abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
@@ -91,7 +116,7 @@ contract BTCBridge is IBTCBridge, AccessControl, ReentrancyGuard {
     address _token,
     address _to,
     uint256 _amount
-  ) external onlyRole(ADMIN_ROLE) {
+  ) external onlyRole(KEEPER_ROLE) {
     SafeERC20.safeTransfer(IERC20(_token), _to, _amount);
   }
 

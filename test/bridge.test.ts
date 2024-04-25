@@ -1,15 +1,15 @@
 import { deployments } from "hardhat";
 import chai from "chai";
 import { Ship } from "../utils";
-import { BTCBridge, BTCBridge__factory, MockWBTC, MockWBTC__factory } from "../types";
+import { Bridge, Bridge__factory, MockWBTC, MockWBTC__factory } from "../types";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { Signature, getBytes, solidityPackedKeccak256 } from "ethers";
 
 const { expect } = chai;
 
 let ship: Ship;
-let btc: MockWBTC;
-let bridge: BTCBridge;
+let wbtc: MockWBTC;
+let bridge: Bridge;
 
 let alice: SignerWithAddress;
 let keeper: SignerWithAddress;
@@ -22,7 +22,7 @@ const key = "0x0000000000000000000000000000000000000000000000000000000000000001"
 const setup = deployments.createFixture(async (hre) => {
   ship = await Ship.init(hre);
   const { accounts, users } = ship;
-  await deployments.fixture(["bridge"]);
+  await deployments.fixture(["bridge", "mocks"]);
 
   return {
     ship,
@@ -38,9 +38,9 @@ const getDepositSign = async (
   chainId: bigint,
   signer: SignerWithAddress,
 ) => {
-  let hash = solidityPackedKeccak256(
-    ["address", "bytes32", "uint256", "uint256"],
-    [sender, key, amount, chainId],
+  const hash = solidityPackedKeccak256(
+    ["address", "bytes32", "address", "uint256", "uint256"],
+    [sender, key, wbtc.target, amount, chainId],
   );
   const sig = await signer.signMessage(getBytes(hash));
   const { r, s, v } = Signature.from(sig);
@@ -57,32 +57,34 @@ describe("Bridge test", () => {
 
     alice = accounts.alice;
     keeper = accounts.bob;
-    admin = accounts.vault;
+    admin = accounts.deployer;
 
-    btc = (await ship.connect(MockWBTC__factory)) as MockWBTC;
-    bridge = (await ship.connect(BTCBridge__factory)) as BTCBridge;
+    wbtc = (await ship.connect(MockWBTC__factory)) as MockWBTC;
+    bridge = (await ship.connect(Bridge__factory)) as Bridge;
     await bridge.connect(admin).grantRole(await bridge.KEEPER_ROLE(), keeper);
-    await btc.transfer(alice.address, amount);
-    await btc.connect(alice).approve(bridge.target, amount);
+    await wbtc.transfer(alice.address, amount);
+    await wbtc.connect(alice).approve(bridge.target, amount);
   });
 
   describe("deposit function", () => {
     it("invalid signature(signer)", async () => {
       const sig = await getDepositSign(alice.address, key, amount, chainId, alice);
-      await expect(bridge.connect(alice).deposit(key, amount, sig)).to.revertedWith(
-        "BTCBridge: invalid parameters",
+      await expect(bridge.connect(alice).deposit(key, wbtc.target, amount, sig)).to.revertedWithCustomError(
+        bridge,
+        "InvalidParams",
       );
     });
     it("invalid signature(amount)", async () => {
       const sig = await getDepositSign(alice.address, key, amount + 1n, chainId, keeper);
-      await expect(bridge.connect(alice).deposit(key, amount, sig)).to.revertedWith(
-        "BTCBridge: invalid parameters",
+      await expect(bridge.connect(alice).deposit(key, wbtc.target, amount, sig)).to.revertedWithCustomError(
+        bridge,
+        "InvalidParams",
       );
     });
 
     it("valid signature", async () => {
       const sig = await getDepositSign(alice.address, key, amount, chainId, keeper);
-      await expect(bridge.connect(alice).deposit(key, amount, sig))
+      await expect(bridge.connect(alice).deposit(key, wbtc.target, amount, sig))
         .to.emit(bridge, "Deposit")
         .withArgs(key, alice.address);
     });
@@ -90,12 +92,12 @@ describe("Bridge test", () => {
 
   describe("withdraw function", () => {
     it("invalid caller", async () => {
-      await expect(bridge.connect(alice).withdraw(key, alice.address, amount))
+      await expect(bridge.connect(alice).withdraw(key, alice.address, wbtc.target, amount))
         .to.revertedWithCustomError(bridge, "AccessControlUnauthorizedAccount")
         .withArgs(alice.address, await bridge.KEEPER_ROLE());
     });
     it("valid call", async () => {
-      await expect(bridge.connect(keeper).withdraw(key, alice.address, amount))
+      await expect(bridge.connect(keeper).withdraw(key, alice.address, wbtc.target, amount))
         .to.emit(bridge, "Withdraw")
         .withArgs(key, alice.address);
     });

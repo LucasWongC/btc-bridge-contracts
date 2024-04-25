@@ -51,14 +51,14 @@ const config: HardhatUserConfig = {
       accounts: accounts("sepolia"),
       tags: ["test", "live"],
     },
-    polygon: {
-      url: node_url("polygon"),
-      accounts: accounts("polygon"),
+    bscTestnet: {
+      url: node_url("bscTestnet"),
+      accounts: accounts("bscTestnet"),
       tags: ["test", "live"],
     },
-    mumbai: {
-      url: node_url("mumbai"),
-      accounts: accounts("mumbai"),
+    ASepolia: {
+      url: node_url("ASepolia"),
+      accounts: accounts("ASepolia"),
       tags: ["test", "live"],
     },
   },
@@ -81,7 +81,7 @@ const config: HardhatUserConfig = {
   solidity: {
     compilers: [
       {
-        version: "0.8.20",
+        version: "0.8.24",
         settings: {
           optimizer: {
             enabled: true,
