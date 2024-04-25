@@ -1,14 +1,14 @@
 import { deployments } from "hardhat";
 import chai from "chai";
 import { Ship } from "../utils";
-import { Bridge, Bridge__factory, MockWBTC, MockWBTC__factory } from "../types";
+import { Bridge, Bridge__factory, MockERC20 } from "../types";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { Signature, getBytes, solidityPackedKeccak256 } from "ethers";
 
 const { expect } = chai;
 
 let ship: Ship;
-let wbtc: MockWBTC;
+let wbtc: MockERC20;
 let bridge: Bridge;
 
 let alice: SignerWithAddress;
@@ -22,7 +22,7 @@ const key = "0x0000000000000000000000000000000000000000000000000000000000000001"
 const setup = deployments.createFixture(async (hre) => {
   ship = await Ship.init(hre);
   const { accounts, users } = ship;
-  await deployments.fixture(["bridge", "mocks"]);
+  await deployments.fixture(["bridge", "mock-wbtc"]);
 
   return {
     ship,
@@ -59,10 +59,10 @@ describe("Bridge test", () => {
     keeper = accounts.bob;
     admin = accounts.deployer;
 
-    wbtc = (await ship.connect(MockWBTC__factory)) as MockWBTC;
+    wbtc = (await ship.connect("WBTC")) as MockERC20;
     bridge = (await ship.connect(Bridge__factory)) as Bridge;
     await bridge.connect(admin).grantRole(await bridge.KEEPER_ROLE(), keeper);
-    await wbtc.transfer(alice.address, amount);
+    await wbtc.connect(alice).mint(amount);
     await wbtc.connect(alice).approve(bridge.target, amount);
   });
 

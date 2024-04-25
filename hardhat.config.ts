@@ -66,8 +66,8 @@ const config: HardhatUserConfig = {
     apiKey: {
       mainnet: verifyKey("etherscan"),
       sepolia: verifyKey("etherscan"),
-      polygon: verifyKey("polygonscan"),
-      polygonMumbai: verifyKey("polygonscan"),
+      bsc: verifyKey("bscscan"),
+      bscTestnet: verifyKey("bscscan"),
     },
   },
   sourcify: {
