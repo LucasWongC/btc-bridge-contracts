@@ -86,7 +86,7 @@ describe("Bridge test", () => {
       const sig = await getDepositSign(alice.address, key, amount, chainId, keeper);
       await expect(bridge.connect(alice).deposit(key, wbtc.target, amount, sig))
         .to.emit(bridge, "Deposit")
-        .withArgs(key, alice.address);
+        .withArgs(key, wbtc.target, amount);
     });
   });
 
@@ -99,7 +99,7 @@ describe("Bridge test", () => {
     it("valid call", async () => {
       await expect(bridge.connect(keeper).withdraw(key, alice.address, wbtc.target, amount))
         .to.emit(bridge, "Withdraw")
-        .withArgs(key, alice.address);
+        .withArgs(key, wbtc.target, amount);
     });
   });
 });

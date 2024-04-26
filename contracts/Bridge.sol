@@ -21,8 +21,8 @@ contract Bridge is AccessControl, ReentrancyGuard {
   bytes32 public constant ADMIN_ROLE = keccak256("Admin");
   bytes32 public constant KEEPER_ROLE = keccak256("Keeper");
 
-  event Deposit(bytes32 indexed key, address from);
-  event Withdraw(bytes32 indexed key, address to);
+  event Deposit(bytes32 indexed key, address indexed token, uint256 amount);
+  event Withdraw(bytes32 indexed key, address indexed token, uint256 amount);
 
   error InvalidParams();
   error InvalidAmount();
@@ -67,7 +67,7 @@ contract Bridge is AccessControl, ReentrancyGuard {
       IERC20(_token).safeTransferFrom(_msgSender(), address(this), _amount);
     }
 
-    emit Deposit(_key, _msgSender());
+    emit Deposit(_key, _token, _amount);
   }
 
   /**
@@ -89,7 +89,7 @@ contract Bridge is AccessControl, ReentrancyGuard {
       IERC20(_token).safeTransfer(_to, _amount);
     }
 
-    emit Withdraw(_key, _to);
+    emit Withdraw(_key, _token, _amount);
   }
 
   /// @dev checks keeper signature
@@ -112,12 +112,30 @@ contract Bridge is AccessControl, ReentrancyGuard {
   }
 
   /// @dev owner can withdraw tokens of contract
+  function addPool(address _token, uint256 _amount) external payable onlyRole(ADMIN_ROLE) {
+    if (_token == address(0)) {
+      if (msg.value != _amount) {
+        revert InvalidAmount();
+      }
+    } else {
+      IERC20(_token).safeTransferFrom(_msgSender(), address(this), _amount);
+    }
+
+    emit Deposit(bytes32(0), _token, _amount);
+  }
+
   function withdrawPool(
     address _token,
     address _to,
     uint256 _amount
-  ) external onlyRole(KEEPER_ROLE) {
-    SafeERC20.safeTransfer(IERC20(_token), _to, _amount);
+  ) external onlyRole(ADMIN_ROLE) {
+    if (_token == address(0)) {
+      payable(_to).sendValue(_amount);
+    } else {
+      IERC20(_token).safeTransfer(_to, _amount);
+    }
+
+    emit Withdraw(bytes32(0), _token, _amount);
   }
 
   /// @dev revert eth deposit and another calls
