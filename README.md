@@ -1,6 +1,116 @@
-## Version
+# Bridge Contract Functional Documentation
 
-**2.0.0-alpha.1**
+## Overview
+
+The Bridge contract facilitates bridging assets between different networks. It allows users to deposit tokens into the contract, which are then managed by designated keepers for cross-network transactions. This document provides an overview of the contract's functionalities, roles, and usage.
+
+## Contract Details
+
+- **Contract Name:** Bridge
+- **Solidity Version:** ^0.8.20
+- **License:** Unlicense
+- **Dependencies:**
+  - OpenZeppelin's AccessControl
+  - OpenZeppelin's ReentrancyGuard
+  - OpenZeppelin's SafeERC20
+  - OpenZeppelin's Address
+  - Custom `Sig` library from "./libraries/Structs.sol"
+
+## Roles
+
+The contract defines two roles:
+
+1. **Admin (ADMIN_ROLE):** Can manage keepers and withdraw tokens from the contract.
+2. **Keeper (KEEPER_ROLE):** Manages transactions and can withdraw tokens on behalf of users.
+
+## Functions
+
+### Constructor
+
+- **Description:** Initializes the bridge contract with the admin role and sets the chain ID.
+- **Parameters:**
+  - `_admin`: Admin address for the bridge.
+- **Access:** Public
+
+### deposit
+
+- **Description:** Allows users to deposit tokens into the bridge for cross-network transactions.
+- **Parameters:**
+  - `_key`: Transaction key.
+  - `_token`: Token address to deposit.
+  - `_amount`: Amount of tokens to deposit.
+  - `_sig`: Signature of the designated keeper.
+- **Access:** External
+
+### withdraw
+
+- **Description:** Allows keepers to withdraw tokens from the bridge and send them to users.
+- **Parameters:**
+  - `_key`: Transaction key.
+  - `_to`: Address of the user receiving tokens.
+  - `_token`: Token address to withdraw.
+  - `_amount`: Amount of tokens to withdraw.
+- **Access:** External, Non-reentrant, OnlyKeeper
+
+### addPool
+
+- **Description:** Allows the admin to add tokens to the contract's pool.
+- **Parameters:**
+  - `_token`: Token address to add to the pool.
+  - `_amount`: Amount of tokens to add.
+- **Access:** External, OnlyAdmin
+
+### withdrawPool
+
+- **Description:** Allows the admin to withdraw tokens from the contract's pool.
+- **Parameters:**
+  - `_token`: Token address to withdraw from the pool.
+  - `_to`: Address to receive the withdrawn tokens.
+  - `_amount`: Amount of tokens to withdraw.
+- **Access:** External, OnlyAdmin
+
+### Fallback and Receive Functions
+
+- **Fallback:** Reverts all ETH deposits and other calls.
+- **Receive:** Reverts all ETH deposits and other calls.
+
+## Events
+
+The contract emits the following events:
+
+- `Deposit(bytes32 indexed key, address indexed token, uint256 amount)`: Emits when a deposit occurs.
+- `Withdraw(bytes32 indexed key, address indexed token, uint256 amount)`: Emits when a withdrawal occurs.
+
+## Errors
+
+The contract defines the following custom errors:
+
+- `InvalidParams()`: Indicates invalid parameters in a function call.
+- `InvalidAmount()`: Indicates an invalid token amount in a function call.
+
+## Usage
+
+1. **Admin Setup:**
+
+   - Deploy the contract with an admin address.
+
+2. **Deposit Tokens:**
+
+   - Users call the `deposit` function with the required parameters and a valid keeper signature.
+
+3. **Withdraw Tokens:**
+
+   - Keepers call the `withdraw` function to send tokens to users.
+
+4. **Manage Token Pool:**
+   - Admins can add tokens to the contract's pool using `addPool`.
+   - Admins can withdraw tokens from the pool using `withdrawPool`.
+
+## Security Considerations
+
+- Ensure that only authorized users have access to admin and keeper roles.
+- Validate signatures and parameters before processing transactions.
+- Regularly review and audit contract code for vulnerabilities.
 
 ## Setting up local development
 
@@ -50,13 +160,13 @@ yarn script:sepolia ./scripts/....
 - To run deploy contracts on Sepolia testnet (uses Hardhat deploy)
 
 ```bash
-yarn deploy:sepolia --tags ....
+yarn deploy:sepolia --tags bridge
 ```
 
 - To verify contracts on etherscan
 
 ```bash
-yarn verify:sepolia MyTokenContract,MyNFTContract
+yarn verify:sepolia Bridge
 ```
 
 ... see more useful commands in package.json file

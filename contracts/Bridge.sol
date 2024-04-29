@@ -43,10 +43,10 @@ contract Bridge is AccessControl, ReentrancyGuard {
   }
 
   /**
-   * @dev deposit wbtc to bridge. Users call this function
+   * @dev deposit token to bridge. Users call this function
    * @param _key transaction key
    * @param _token deposit token
-   * @param _amount wbtc amount to bridge
+   * @param _amount token amount to bridge
    * @param _sig signature of keeper
    */
   function deposit(
@@ -71,11 +71,11 @@ contract Bridge is AccessControl, ReentrancyGuard {
   }
 
   /**
-   * @dev send wbtc to user. Keepers call this function to send btc to users
+   * @dev send token to user. Keepers call this function to send btc to users
    * @param _key transaction key
    * @param _to address of user
    * @param _token token to withdraw
-   * @param _amount wbtc amount to send
+   * @param _amount token amount to send
    */
   function withdraw(
     bytes32 _key,
