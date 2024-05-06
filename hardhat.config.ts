@@ -61,6 +61,11 @@ const config: HardhatUserConfig = {
       accounts: accounts("ASepolia"),
       tags: ["test", "live"],
     },
+    bitLayerTestnet: {
+      url: node_url("bitLayerTestnet"),
+      accounts: accounts("bitLayerTestnet"),
+      tags: ["test", "live"],
+    },
   },
   etherscan: {
     apiKey: {
@@ -68,7 +73,18 @@ const config: HardhatUserConfig = {
       sepolia: verifyKey("etherscan"),
       bsc: verifyKey("bscscan"),
       bscTestnet: verifyKey("bscscan"),
+      "BitLayer Testnet": "12345",
     },
+    customChains: [
+      {
+        network: "BitLayer Testnet",
+        chainId: 200810,
+        urls: {
+          apiURL: "https://api-testnet.btrscan.com/scan/api",
+          browserURL: "https://testnet-scan.bitlayer.org/",
+        },
+      },
+    ],
   },
   sourcify: {
     // Disabled by default

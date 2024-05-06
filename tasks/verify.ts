@@ -31,6 +31,7 @@ task("upload:batch", "Verifies deployed contracts")
       //eslint-disable-next-line @typescript-eslint/no-explicit-any
       const constructorArguments = (artifacts.args as any[]) || [];
       const address = artifacts.address as string;
+
       try {
         await hre.run("verify:verify", {
           address,
