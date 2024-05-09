@@ -71,6 +71,7 @@ const config: HardhatUserConfig = {
     apiKey: {
       mainnet: verifyKey("etherscan"),
       sepolia: verifyKey("etherscan"),
+      arbitrumSepolia: verifyKey("arbscan"),
       bsc: verifyKey("bscscan"),
       bscTestnet: verifyKey("bscscan"),
       "BitLayer Testnet": "12345",
