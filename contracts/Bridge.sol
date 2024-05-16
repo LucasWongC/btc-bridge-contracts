@@ -56,8 +56,7 @@ contract Bridge is AccessControl, ReentrancyGuard {
     uint256 _amount,
     Sig calldata _sig
   ) external payable {
-    require(!used[_key], "Key already used");
-    if (!_checkDeposit(msg.sender, _key, _token, _amount, _sig)) {
+    if (!_checkDeposit(msg.sender, _key, _token, _amount, _sig) || used[_key]) {
       revert InvalidParams();
     }
 
