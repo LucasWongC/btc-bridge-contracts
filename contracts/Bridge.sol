@@ -16,6 +16,7 @@ contract Bridge is AccessControl, ReentrancyGuard {
   using Address for address payable;
 
   uint256 public chainId;
+  mapping(bytes32 => bool) private used;
 
   /// @dev roles
   bytes32 public constant ADMIN_ROLE = keccak256("Admin");
@@ -55,6 +56,7 @@ contract Bridge is AccessControl, ReentrancyGuard {
     uint256 _amount,
     Sig calldata _sig
   ) external payable {
+    require(!used[_key], "Key already used");
     if (!_checkDeposit(msg.sender, _key, _token, _amount, _sig)) {
       revert InvalidParams();
     }
