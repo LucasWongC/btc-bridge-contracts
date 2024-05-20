@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: Unlicense
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.25;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {Sig} from "./libraries/Structs.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 /**
  * @title Bridge contract
@@ -14,8 +15,9 @@ import {Sig} from "./libraries/Structs.sol";
 contract Bridge is AccessControl, ReentrancyGuard {
   using SafeERC20 for IERC20;
   using Address for address payable;
+  using ECDSA for bytes32;
 
-  uint256 public chainId;
+  uint256 public immutable CHAIN_ID;
   mapping(bytes32 => bool) private used;
 
   /// @dev roles
@@ -37,7 +39,7 @@ contract Bridge is AccessControl, ReentrancyGuard {
     assembly {
       _chainId := chainid()
     }
-    chainId = _chainId;
+    CHAIN_ID = _chainId;
 
     _setRoleAdmin(KEEPER_ROLE, ADMIN_ROLE);
     _grantRole(ADMIN_ROLE, _admin);
@@ -55,17 +57,25 @@ contract Bridge is AccessControl, ReentrancyGuard {
     address _token,
     uint256 _amount,
     Sig calldata _sig
-  ) external payable {
+  ) external payable nonReentrant {
     if (!_checkDeposit(msg.sender, _key, _token, _amount, _sig) || used[_key]) {
       revert InvalidParams();
     }
+
+    used[_key] = true;
 
     if (_token == address(0)) {
       if (msg.value != _amount) {
         revert InvalidAmount();
       }
     } else {
+      uint256 prev = IERC20(_token).balanceOf(address(this));
       IERC20(_token).safeTransferFrom(_msgSender(), address(this), _amount);
+      uint256 current = IERC20(_token).balanceOf(address(this));
+
+      if (current < prev + _amount) {
+        revert InvalidAmount();
+      }
     }
 
     emit Deposit(_key, _token, _amount);
@@ -101,13 +111,13 @@ contract Bridge is AccessControl, ReentrancyGuard {
     uint256 _amount,
     Sig calldata _sig
   ) private view returns (bool) {
-    bytes32 messageHash = keccak256(abi.encodePacked(_sender, _key, _token, _amount, chainId));
+    bytes32 messageHash = keccak256(abi.encodePacked(_sender, _key, _token, _amount, CHAIN_ID));
 
     bytes32 ethSignedMessageHash = keccak256(
       abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
     );
 
-    address signer = ecrecover(ethSignedMessageHash, _sig.v, _sig.r, _sig.s);
+    (address signer, , ) = ethSignedMessageHash.tryRecover(_sig.v, _sig.r, _sig.s);
 
     return hasRole(KEEPER_ROLE, signer);
   }
